@@ -1,0 +1,136 @@
+import java_cup.runtime.*;
+
+/**
+ *  Usercode Components
+ */
+parser code {:
+    // Connect this parser to a scanner!
+    Scanner s;
+    Parser(Scanner s){ this.s=s; }
+:}
+
+/* define how to connect to the scanner! */
+scan with {: return s.next_token(); :};
+
+/**
+ *  Symbol Lists
+ */
+
+/* Terminals (tokens returned by the scanner). */
+terminal            CONCAT, LPAREN, RPAREN, LBRACKET, RBRACKET, REVERSE, COMMA, IF, ELSE, PREFIX;
+terminal String     STRING_LITERAL, IDENTIFIER;
+
+/*  Non terminals */
+non terminal           program;
+non terminal String    func, expr, expr2, ifexpr, ifexpr2, list_decl_args, decl_arg, ndecl_arg, list_call_args, call_arg, ncall_arg;
+non terminal String    list_func_args, func_args, nfunc_args;
+
+/**
+ *  Precedence Declarations
+ */
+precedence left COMMA;
+precedence left IDENTIFIER, STRING_LITERAL;
+precedence left IF;
+precedence left PREFIX;
+precedence left CONCAT;
+precedence left REVERSE;
+precedence left LPAREN;
+
+/**
+ *  The Grammar Rules
+ */
+/*  Συνοπτική επεξήγηση των Non terminals:
+
+    list_decl_args -> βρίσκει την λίστα των arguments τα οποία βρίσκονται εκεί που δηλώνονται οι συναρτήσεις (επιτρέπονται μόνο identifiers)
+        decl_arg   -> ελέγχει αν υπάρχει identifier argument
+        ndecl_arg  -> ελέγχει αν υπάρχει επόμενο identifier
+
+    list_call_args -> βρίσκει την λίστα των arguments τα οποία βρίσκονται εκεί που καλούνται οι συναρτήσεις, έξω από το σώμα των συναρτήσεων (επιτρέπονται μόνο expressions με string literals)
+        call_arg   -> ελέγχει αν υπάρχει string literal argument
+        ncall_arg  -> ελέγχει αν υπάρχει επόμενο string literal
+
+    list_func_args -> βρίσκει την λίστα των arguments τα οποία βρίσκονται εκεί που καλούνται οι συναρτήσεις, μέσα στο σώμα των συναρτήσων (επιτρέπονται expressions με string literals και identifiers)
+        func_args  -> ελέγχει αν υπάρχει string literal ή identifier argument
+        nfunc_args -> ελέγχει αν υπάρχει επόμενο string literal ή identifier
+
+    expr -> είναι τα expressions που επιτρέπονται όλοι οι συνδυασμοί, δηλαδή πχ string literals με identifiers.
+        ifexpr -> ελέγχει αν έχει χρησιμοποιηθεί το prefix μέσα στην συνθήκη του if όταν εξετάζουμε expressions με string literals και identifiers
+
+    expr2 -> είναι τα expressions που επιτρέπονται συνδυασμοί μόνο με string literals.
+        ifexpr -> ελέγχει αν έχει χρησιμοποιηθεί το prefix μέσα στην συνθήκη του if όταν εξετάζουμε expressions με string literals
+    
+    func  -> ελέγχει αν υπάρχουν functions declarations και τα αναγνωρίζει και μετά συνεχίζει στα calls/single expressions
+
+    program -> Εκτυπώνει την βασική κεφαλή του java προγράμματος και συνεχίζει με τον κανόνα func
+
+*/
+
+program       ::= func:f {: System.out.println("public class Main{");
+                            System.out.println("\tpublic static void main(String[] args){");
+                            System.out.printf("%s\t}\n}\n", f);
+                        :};
+
+func          ::= func:rest IDENTIFIER:id list_decl_args:args LBRACKET expr:e RBRACKET func:drest 
+                                                                           {: RESULT = String.format("%s%s\t}\n\tpublic static String %s(%s){\n\t\treturn %s;\n", drest, rest, id, args, e); :}
+              |   func:rest expr2:e                                        {: RESULT = String.format("%s\t\tSystem.out.println(%s);\n", rest, e); :}
+              |                                                            {: RESULT = ""; :}
+              ;
+
+expr          ::= expr:e1 CONCAT expr:e2                                   {: RESULT = String.format("((%s) + (%s))", e1, e2); :}
+              |   REVERSE expr:e                                           {: RESULT = String.format("new StringBuffer(%s).reverse().toString()", e); :}
+              |   LPAREN expr:e RPAREN                                     {: RESULT = String.format("(%s)", e); :}
+              |   STRING_LITERAL:s                                         {: RESULT = String.format("\"%s\"", s); :}
+              |   IDENTIFIER:id                                            {: RESULT = String.format("%s", id); :}
+              |   IDENTIFIER:id list_func_args:args                        {: RESULT = String.format("%s(%s)", id, args); :}
+              |   IF LPAREN ifexpr:e RPAREN expr:ifbody ELSE expr:elsebody {: RESULT = String.format(" %s ? %s : %s", e, ifbody, elsebody); :}
+              ;
+
+ifexpr        ::= expr:e1 PREFIX expr:e2                                   {: RESULT = String.format("%s.startsWith(%s)", e2, e1); :}
+              ;
+
+expr2         ::= expr2:e1 CONCAT expr2:e2                                {: RESULT = String.format("((%s) + (%s))", e1, e2); :}
+              |   REVERSE expr2:e                                         {: RESULT = String.format("new StringBuffer(%s).reverse().toString()", e); :}
+              |   LPAREN expr2:e RPAREN                                   {: RESULT = String.format("(%s)", e); :}
+              |   STRING_LITERAL:s                                        {: RESULT = String.format("\"%s\"", s); :}
+              |   IDENTIFIER:id list_call_args:args                       {: RESULT = String.format("%s(%s)", id, args); :}
+              |   IF LPAREN ifexpr2:e RPAREN expr2:ifbody ELSE expr2:elsebody
+                                                                          {: RESULT = String.format(" %s ? %s : %s", e, ifbody, elsebody); :}
+              ;
+
+ifexpr2       ::= expr2:e1 PREFIX expr2:e2                                {: RESULT = String.format("%s.startsWith(%s)", e2, e1); :}
+              ;
+
+/* Εδώ δεν χρειάζεται το RPAREN καθώς το ")" εμπεριέχεται στο LBRACKET*/
+list_decl_args::= LPAREN decl_arg:a                                       {: RESULT = String.format("%s", a); :}
+              ;
+
+decl_arg      ::= IDENTIFIER:id ndecl_arg:na                              {: RESULT = String.format("String %s%s", id, na); :}
+              |                                                           {: RESULT = ""; :}
+              ;
+
+ndecl_arg     ::= COMMA IDENTIFIER:id ndecl_arg:na                        {: RESULT = String.format(",String %s %s", id, na); :}
+              |                                                           {: RESULT = ""; :}
+              ;
+
+list_call_args::= LPAREN call_arg:a RPAREN                                {: RESULT = String.format("%s", a); :}
+              ;
+
+call_arg      ::= expr2:e ncall_arg:na                                    {: RESULT = String.format("%s%s", e, na); :}
+              |   expr2:e list_call_args:a ncall_arg:na                   {: RESULT = String.format("%s(%s)%s", e, a, na); :}
+              |                                                           {: RESULT = ""; :}
+              ;
+
+ncall_arg     ::= COMMA expr2:e ncall_arg:na                              {: RESULT = String.format(",%s %s", e, na); :}
+              |                                                           {: RESULT = ""; :}
+              ;
+
+list_func_args::= LPAREN func_args:a RPAREN                               {: RESULT = String.format("%s", a); :}
+              ;
+
+func_args     ::= expr:e nfunc_args:na                                    {: RESULT = String.format("%s%s", e, na); :}
+              |   expr:e list_func_args:a nfunc_args:na                   {: RESULT = String.format("%s(%s)%s", e, a, na); :}
+              |                                                           {: RESULT = ""; :}
+              ;
+nfunc_args    ::= COMMA expr:e nfunc_args:na                              {: RESULT = String.format(",%s %s", e, na); :}
+              |                                                           {: RESULT = ""; :}
+              ;
