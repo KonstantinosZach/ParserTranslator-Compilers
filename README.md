@@ -2,10 +2,10 @@
 __Όνομα__: Γεώργιος-Κωνσταντίνος Ζαχαρόπουλος
 
 ## Project 1
-A simple LL(1) Calculator Parser - Translator to Java. [More]()
+A simple LL(1) Calculator Parser - Translator to Java. [More](https://github.com/KonstantinosZach/ParserTranslator-Compilers/tree/main/Part1)
 
 ## Project 2
-Implementation of a parser and translator for a language supporting string operations. The language supports concatenation (+) and "reverse" operators over strings, function definitions and calls, conditionals (if-else i.e, every "if" must be followed by an "else"), and some logical expressions. **JavaCUP** is used for the generation of the parser combined with generated lexer **JFlex**. [More]()
+Implementation of a parser and translator for a language supporting string operations. The language supports concatenation (+) and "reverse" operators over strings, function definitions and calls, conditionals (if-else i.e, every "if" must be followed by an "else"), and some logical expressions. **JavaCUP** is used for the generation of the parser combined with generated lexer **JFlex**. [More](https://github.com/KonstantinosZach/ParserTranslator-Compilers/tree/main/Part2)
 
 ---
 
